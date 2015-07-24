@@ -1,0 +1,31 @@
+{
+	"bitwise": true,
+	"camelcase": true,
+	"curly": true,
+	"eqeqeq": true,
+	"forin": true,
+	"freeze": true,
+	"immed": true,
+	"newcap": true,
+	"noarg": true,
+	"noempty": true,
+	"nonew": true,
+	"undef": true,
+	"strict": true,
+	"trailing": true,
+	"latedef": "nofunc",
+	"unused": true,
+	"indent": 2,
+	"quotmark": "double",
+	"node": true,
+
+	"predef": [
+		// Mocha
+		"describe",
+		"it",
+		"before",
+		"beforeEach",
+		"after",
+		"afterEach"
+	]
+}
