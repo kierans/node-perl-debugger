@@ -4,7 +4,7 @@
   "description": "An interface to allow Node programs to debug Perl scripts",
   "author": "Kieran Simpson <kierans777@gmail.com>",
   "license": "Apache License 2.0",
-  "main": "client.js",
+  "main": "index.js",
   "bugs": "https://bitbucket.org/kierans777/node-perl-debugger/issues",
   "repository": {
     "type": "hg",
