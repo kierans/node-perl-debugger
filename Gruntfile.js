@@ -33,8 +33,11 @@ module.exports = function(grunt) {
     },
     jsdoc: {
       dist: {
-        src: ["src/*.js"],
-        dest: "doc"
+        src: [ "src/*.js", "README.md" ],
+        dest: "doc",
+        options: {
+          configure: "jsdoc.conf"
+        }
       }
     }
   });
