@@ -45,7 +45,51 @@ to coordinate the sending, and receiving of data with the debugger.  While clien
 commands have been issued, in practise any event emitted will also be processed in order to settle a Promise returned
 from a command function.
 
-For example, the `break` event is also used to resolve the Promise returned from the `continue()` function since the
+For example, the `break` event is used to resolve the Promise returned from the `continue()` function since the
 Perl programming is continuing it's execution until a breakpoint is hit (assuming one has been set).
 
 See the API docs, and the example test Perl program to see the commands in action.
+
+# Example
+
+This example is used to debug the test Perl program in the `test/perl` program
+
+```javascript
+"use strict";
+
+var DebuggerHost = require("node-perl-debugger").DebuggerHost;
+
+var debug = new DebuggerHost({
+  log: process.stdout,
+  port: 12345
+});
+
+debug.on("disconnection", function() {
+  debug.close();
+});
+
+debug.on("close", function() {
+  console.log("Finished");
+});
+
+debug.listen();
+
+var commands = debug.commands();
+
+commands.on("ready", function() {
+  commands.break("test.pl", 45)
+      .then(function() {
+        return commands.continue();
+      })
+      .then(function() {
+        return commands.variables();
+      })
+      .then(function(vars) {
+        console.log(JSON.stringify(vars, null, 2));
+      })
+      .then(function() {
+        return commands.quit();
+      })
+      .catch(console.error);
+});
+```
