@@ -21,7 +21,7 @@ module.exports = function(grunt) {
     },
     simplemocha: {
       options: {
-        timeout: 2000,
+        timeout: 500,
         ignoreLeaks: false,
         ui: "bdd",
         reporter: "progress"
