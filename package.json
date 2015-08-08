@@ -1,7 +1,7 @@
 {
   "name": "node-perl-debugger",
   "version": "0.0.1",
-  "description": "Interface to allow Node programs to debug perl scripts",
+  "description": "An interface to allow Node programs to debug Perl scripts",
   "author": "Kieran Simpson <kierans777@gmail.com>",
   "license": "Apache License 2.0",
   "main": "client.js",
@@ -16,6 +16,10 @@
   "keywords": [
     "perl"
   ],
+  "dependencies": {
+    "merge": "^1.2.0",
+    "q": "^1.4.1"
+  },
   "devDependencies": {
     "chai": "^3.0.0",
     "grunt": "^0.4.5",
@@ -25,6 +29,7 @@
     "jshint-stylish": "^2.0.1",
     "load-grunt-tasks": "^3.2.0",
     "mocha": "^2.2.5",
-    "mocha-should": "git+https://github.com/kierans/mocha-should.git#RELEASE_0_0_1"
+    "mocha-should": "git+https://github.com/kierans/mocha-should.git#RELEASE_0_0_1",
+    "resumer": "0.0.0"
   }
 }

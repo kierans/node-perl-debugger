@@ -2,3 +2,4 @@ syntax: glob
 
 .idea/*
 node_modules/*
+doc
