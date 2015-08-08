@@ -41,7 +41,9 @@ function DebuggerHost(config) {
   this._logger = Logger.initLogger(config);
 
   this._emitter = new events.EventEmitter();
-  this._commands = this._createTcpServer();
+  this._commands = this._createTcpServer({
+    log: this._logger.log
+  });
 
   this._proxyServerEvents();
 }
@@ -83,9 +85,9 @@ DebuggerHost.prototype.commands = function() {
   return this._commands;
 };
 
-DebuggerHost.prototype._createTcpServer = function() {
+DebuggerHost.prototype._createTcpServer = function(config) {
   var self = this,
-      commands = new DebuggerCommands();
+      commands = new DebuggerCommands(null, config);
 
   this._server = net.createServer();
 
