@@ -1,14 +1,13 @@
 "use strict";
 
-var TransformStream = require("stream").Transform,
-    util = require("util");
-
-var merge = require("merge");
+var util = require("util");
 
 var Logger = require("./logger"),
+    /** @type {Function} */
+    Parser = require("./Parser"),
     StreamEmitter = require("./StreamEmitter");
 
-util.inherits(DebuggerVariableParser, TransformStream);
+util.inherits(DebuggerVariableParser, Parser);
 StreamEmitter.mixin(DebuggerVariableParser);
 
 module.exports = DebuggerVariableParser;
@@ -28,9 +27,9 @@ DebuggerVariableParser.ARRAY_REF = "array-ref";
 DebuggerVariableParser.HASH_REF = "hash-ref";
 DebuggerVariableParser.CODE_REF = "code-ref";
 DebuggerVariableParser.EMPTY_NON_SCALAR = "empty-non-scalar";
-DebuggerVariableParser.WHITESPACE = "whitespace";
+DebuggerVariableParser.WHITESPACE = Parser.WHITESPACE;
 DebuggerVariableParser.INDENT = "indent";
-DebuggerVariableParser.PROMPT = "prompt";
+DebuggerVariableParser.PROMPT = Parser.PROMPT;
 
 // virtual tokens.
 DebuggerVariableParser.ARRAY = "array";
@@ -56,30 +55,16 @@ DebuggerVariableParser.NON_SCALAR_ITEM = DebuggerVariableParser.KEY_VALUE_PAIR =
 
 DebuggerVariableParser.INDENT_LENGTH = 3;
 
-// jshint freeze:false
-Array.prototype.top = function() {
-  if (this.length > 0) {
-    return this[this.length - 1];
-  }
-
-  return null;
-};
-// jshint freeze:true
-
-/**
- * @typedef {Object} DebuggerVariableParserConfiguration
- * @property {string|Writable} log - If a string, path to a log file, else a Writable stream.
- */
 /**
  * Parses the listing of variables from the Perl debugger.
  * <p>
  * This should not be used directly
  *
- * @param {DebuggerVariableParserConfiguration} [config]
+ * @param {ParserConfiguration} [config]
  * @constructor
  */
 function DebuggerVariableParser(config) {
-  TransformStream.call(this, { objectMode: true });
+  Parser.call(this);
 
   this._variables = null;
   this._logger = Logger.initLogger(config);
@@ -88,45 +73,9 @@ function DebuggerVariableParser(config) {
 }
 
 DebuggerVariableParser.prototype.reset = function() {
+  Parser.prototype.reset.call(this);
+
   this._variables = [];
-  this._resetParser();
-};
-
-//noinspection JSUnusedGlobalSymbols
-DebuggerVariableParser.prototype._transform = function(chunk, encoding, done) {
-  try {
-    try {
-      chunk.split("").forEach(this._character.bind(this));
-
-      // flush through any remaining chars
-      this._flush(function() {});
-    }
-    catch (err) {
-      this._event("parsingerror", err);
-    }
-  }
-  finally {
-    done();
-  }
-};
-
-//noinspection JSUnusedGlobalSymbols
-DebuggerVariableParser.prototype._flush = function(done) {
-  try {
-    while (this._next.length) {
-      this._tokenise();
-    }
-  }
-  catch (err) {
-    this._event("parsingerror", err);
-  }
-
-  done();
-};
-
-DebuggerVariableParser.prototype._character = function(char) {
-  this._next.push(char);
-  this._tokenise();
 };
 
 DebuggerVariableParser.prototype._tokenise = function() {
@@ -227,33 +176,6 @@ DebuggerVariableParser.prototype._beginToken = function() {
       // we don't know what we're dealing with.
       throw new Error("Don't know what token is being recognised '" + this._next[0] + "'");
   }
-};
-
-/**
- * @ignore
- *
- * @param [properties] Optional properties to place into the token
- * @private
- */
-DebuggerVariableParser.prototype._endToken = function(properties) {
-  var token = merge(properties, {
-    type: this._tokenType,
-    value: this._tokenValue
-  });
-
-  this._resetToken();
-  this._parse(token);
-};
-
-DebuggerVariableParser.prototype._continuePrompt = function() {
-  if (this._next[0] === " ") {
-    this._endToken();
-    this._consumeChar();
-
-    return;
-  }
-
-  this._continueToken();
 };
 
 DebuggerVariableParser.prototype._continueIdentifier = function() {
@@ -360,22 +282,6 @@ DebuggerVariableParser.prototype._continueEmptyNonScalar = function() {
   return this._continueToken();
 };
 
-DebuggerVariableParser.prototype._newToken = function(tokenType) {
-  this._tokenType = tokenType;
-  this._tokenValue = this._next[0];
-  this._consumeChar();
-};
-
-DebuggerVariableParser.prototype._continueToken = function() {
-  this._tokenValue += this._next[0];
-  this._consumeChar();
-};
-
-DebuggerVariableParser.prototype._resetToken = function() {
-  this._tokenType = null;
-  this._tokenValue = null;
-};
-
 DebuggerVariableParser.prototype._matchAssignment = function() {
   if (this._next[1] && this._next[1] !== ">") {
     this._newToken(DebuggerVariableParser.ASSIGNMENT);
@@ -421,16 +327,6 @@ DebuggerVariableParser.prototype._matchOpenBracket = function() {
 DebuggerVariableParser.prototype._matchCloseBracket = function() {
   this._newToken(DebuggerVariableParser.CLOSE_BRACKET);
   this._endToken();
-};
-
-DebuggerVariableParser.prototype._consumeChar = function(numChars) {
-  numChars = numChars || 1;
-
-  while (numChars) {
-    this._lastChar = this._next.shift();
-
-    numChars--;
-  }
 };
 
 DebuggerVariableParser.prototype._parse = function(token) {
@@ -524,49 +420,6 @@ DebuggerVariableParser.prototype._followRules = function(token) {
   }
 
   return false;
-};
-
-DebuggerVariableParser.prototype._resetParser = function() {
-  this._next = [];
-  this._tokenType = null;
-  this._parserAllowedFollow = null;
-
-  this._parserStack = [];
-
-  // semantic info storage during a parse
-  this._parserAux = {
-    symbolStack: []
-  };
-
-  this._tokenValue = null;
-  this._lastChar = null;
-};
-
-/**
- * @ignore
- *
- * @param pos From the bottom of the stack
- * @private
- */
-DebuggerVariableParser.prototype._peekAtToken = function(pos) {
- pos = pos || 0;
-
- return this._parserStack[pos] || {
-       type: null,
-       value: null
-     };
-};
-
-DebuggerVariableParser.prototype._topToken = function() {
-  return this._parserStack.top();
-};
-
-DebuggerVariableParser.prototype._shiftToken = function() {
-  return this._parserStack.shift();
-};
-
-DebuggerVariableParser.prototype._pushToken = function(token) {
-  this._parserStack.push(token);
 };
 
 DebuggerVariableParser.prototype._pushIdentifier = function(token) {
