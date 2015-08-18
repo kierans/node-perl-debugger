@@ -32,7 +32,9 @@ describe("DebuggerVariablesParser Tests", function() {
 
   function eventReader(callback) {
     return function() {
-      eventDelegate(parser.read(), callback);
+      process.nextTick(function() {
+        eventDelegate(parser.read(), callback);
+      });
     };
   }
 

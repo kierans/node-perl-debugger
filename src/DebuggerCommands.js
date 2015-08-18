@@ -38,8 +38,13 @@ function DebuggerCommands(stream, config) {
     this.connect(stream);
   }
 
-  // remember, listeners by default have 'this' bound to the EventEmitter
-  this._parser.on("readable", this._onEvent.bind(this));
+  /*
+   * We process events on the next tick in case an error is thrown, otherwise the error
+   * may bubble back into the source stream.
+   *
+   * Remember, listeners by default have 'this' bound to the EventEmitter
+   */
+  this._parser.on("readable", this._onNextTick(this._onEvent.bind(this)));
 }
 
 /**
@@ -191,9 +196,15 @@ DebuggerCommands.prototype._send = function(message) {
   return deferred.promise;
 };
 
+DebuggerCommands.prototype._onNextTick = function(func) {
+  return function() {
+    process.nextTick(func);
+  };
+};
+
 DebuggerCommands.prototype._onEvent = function() {
   var event;
-
+  
   do {
     event = this._parser.read();
 

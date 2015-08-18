@@ -20,9 +20,12 @@ describe("DebuggerCommands Tests", function() {
     commands._parser.push({ name: "prompt" });
   }
 
-  beforeEach(function() {
+  beforeEach(function(done) {
     client = new StringBuffer();
     commands = new DebuggerCommands(client);
+
+    commands.on("ready", done);
+
     emitPrompt();
   });
 
