@@ -16,16 +16,11 @@ DebuggerParser.SCAN_MODE = "scan";
 DebuggerParser.PARSE_MODE = "parse";
 
 /**
- * @typedef {Object} DebuggerParserConfiguration
- * @property {string|Writable} log - If a string, path to a log file, else a Writable stream.
- */
-/**
  * Parses text from the Perl debugger into events.
- * <p>
- * This should not be used directly
  *
- * @param {DebuggerParserConfiguration} [config]
+ * @param {ParserConfiguration} [config]
  * @constructor
+ * @private
  */
 function DebuggerParser(config) {
   TransformStream.call(this, { objectMode: true });

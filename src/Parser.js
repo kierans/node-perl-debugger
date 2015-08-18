@@ -35,7 +35,7 @@ Array.prototype.top = function() {
  *
  * @param {ParserConfiguration} [config]
  * @constructor
- * @private
+ * @abstract
  */
 function Parser(config) {
   TransformStream.call(this, { objectMode: true });

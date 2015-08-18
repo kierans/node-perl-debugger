@@ -3,7 +3,6 @@
 var util = require("util");
 
 var Logger = require("./logger"),
-    /** @type {Function} */
     Parser = require("./Parser"),
     StreamEmitter = require("./StreamEmitter");
 
@@ -62,6 +61,7 @@ DebuggerVariableParser.INDENT_LENGTH = 3;
  *
  * @param {ParserConfiguration} [config]
  * @constructor
+ * @private
  */
 function DebuggerVariableParser(config) {
   Parser.call(this);
