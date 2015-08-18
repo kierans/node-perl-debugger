@@ -15,9 +15,13 @@ describe("DebuggerCommands Tests", function() {
   var client,
       commands;
 
+  function emit(event) {
+    commands._parser.push(event);
+  }
+
   // fakes a prompt from the perl debugger.
   function emitPrompt() {
-    commands._parser.push({ name: "prompt" });
+    emit({ name: "prompt" });
   }
 
   beforeEach(function(done) {
@@ -56,7 +60,7 @@ describe("DebuggerCommands Tests", function() {
       done();
     });
 
-    commands._parser.push({ name: "break", args: [ filename, line ] });
+    emit({ name: "break", args: [ filename, line ] });
   });
 
   should("swallow break when debugger loaded for first time", function(done) {
@@ -68,8 +72,59 @@ describe("DebuggerCommands Tests", function() {
 
     commands.on("prompt", done);
 
-    commands._parser.push({ name: "break", args: [ "foo.pl", 123 ] });
+    emit({ name: "break", args: [ "foo.pl", 123 ] });
     process.nextTick(emitPrompt);
+  });
+
+  should("return no variables when parser issues prompt event", function(done) {
+    var variables = commands.variables();
+
+    variables
+      .then(function(vars) {
+        expect(vars.length).to.equal(0);
+      })
+      .then(done)
+      .catch(done);
+
+    emitPrompt();
+  });
+
+  should("return variables when parser issues variables event", function(done) {
+    var variables = commands.variables(),
+        expected = [
+          {
+            name: "$scalar",
+            type: "string",
+            value: "Hello World"
+          }
+        ];
+
+    variables
+      .then(function(vars) {
+        expect(vars.length).to.equal(1);
+        expect(vars[0]).to.equal(expected[0]);
+      })
+      .then(done)
+      .catch(done);
+
+    emit({ name: "variables", args: [ expected ] });
+    emitPrompt();
+  });
+
+  should("return no variables when parser issues parsing error", function(done) {
+    var variables = commands.variables();
+
+    variables
+      .then(function() {
+        done(new Error("Promise resolved"));
+      })
+      .catch(function(err) {
+        expect(err).to.not.be.undefined;
+        done();
+      });
+
+    emit({ name: "parsingerror", args: [ new Error() ]});
+    emitPrompt();
   });
 
   should("issue step into command", function(done) {
@@ -101,7 +156,7 @@ describe("DebuggerCommands Tests", function() {
         line = 231;
 
     client.on("write", function() {
-      commands._parser.push({ name: "break", args: [ "foo.txt", "231" ]});
+      emit({ name: "break", args: [ "foo.txt", "231" ]});
       emitPrompt();
     });
 
@@ -136,7 +191,7 @@ describe("DebuggerCommands Tests", function() {
         filename = "foo";
 
     client.on("write", function() {
-      commands._parser.push({ name: event, args: [ filename ] });
+      emit({ name: event, args: [ filename ] });
     });
 
     commands.break(filename, 1)
@@ -153,7 +208,7 @@ describe("DebuggerCommands Tests", function() {
         line = 123;
 
     client.on("write", function() {
-      commands._parser.push({ name: event, args: [ line ] });
+      emit({ name: event, args: [ line ] });
     });
 
     commands.break("foo.pl", line)
@@ -180,7 +235,7 @@ describe("DebuggerCommands Tests", function() {
   });
 
   should("instruct perl interpreter to exit when perl program ends", function(done) {
-    commands._parser.push({ name: "terminated" });
+    emit({ name: "terminated" });
 
     checkBuffer("q\n", done);
   });
@@ -188,6 +243,6 @@ describe("DebuggerCommands Tests", function() {
   should("emit terminated event when perl program ends", function(done) {
     commands.on("terminated", done);
 
-    commands._parser.push({ name: "terminated" });
+    emit({ name: "terminated" });
   });
 });
