@@ -35,7 +35,7 @@ process can be connected using the `PERLDB_OPTS` env variable eg:
     
 ## Using the commands interface
 
-The `DebuggerCommands` class can be used to issue commands to the debugger.  It uses an instance of `DebuggerParser`
+The `DebuggerCommands` class can be used to issue commands to the debugger.  It uses an instance of `DebuggerParser` to
 understand output from the debugger.
 
 Clients should wait for the `ready` event before issuing commands.
@@ -77,19 +77,31 @@ debug.listen();
 var commands = debug.commands();
 
 commands.on("ready", function() {
-  commands.break("test.pl", 45)
+  commands.break("Calculator.pm", 10)
+      .then(function() {
+        return commands.break("test.pl", 45);
+      })
+      .then(function() {
+        return commands.continue();
+      })
+      .then(function() {
+        return commands.stacktrace();
+      })
+      .then(log)
       .then(function() {
         return commands.continue();
       })
       .then(function() {
         return commands.variables();
       })
-      .then(function(vars) {
-        console.log(JSON.stringify(vars, null, 2));
-      })
+      .then(log)
       .then(function() {
         return commands.quit();
       })
       .catch(console.error);
 });
+
+function log(json) {
+  console.log(JSON.stringify(json, null, 2));
+}
 ```
