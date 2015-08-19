@@ -1,5 +1,7 @@
 "use strict";
 
+require("../src/metaclass");
+
 var TransformStream = require("stream").Transform,
     util = require("util");
 
@@ -15,16 +17,6 @@ module.exports = Parser;
 
 Parser.WHITESPACE = "whitespace";
 Parser.PROMPT = "prompt";
-
-// jshint freeze:false
-Array.prototype.top = function() {
-  if (this.length > 0) {
-    return this[this.length - 1];
-  }
-
-  return null;
-};
-// jshint freeze:true
 
 /**
  * @typedef {Object} ParserConfiguration

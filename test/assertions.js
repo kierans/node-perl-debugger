@@ -2,18 +2,11 @@
 
 "use strict";
 
+require("../src/metaclass");
+
 var chai = require("chai"),
     expect = chai.expect;
 
-// jshint freeze:false
-Object.prototype.isEmpty = function() {
-  return Object.keys(this).length === 0;
-};
-
-Array.prototype.isEmpty = function() {
-  return this.length === 0;
-};
-// jshint freeze:true
 
 exports.assertParseResultCorrect = function(expected, actual) {
   expect(actual.name).to.equal(expected.name);

@@ -2,6 +2,8 @@
 
 "use strict";
 
+require("../src/metaclass");
+
 var chai = require("chai"),
     expect = chai.expect,
     should = require("mocha-should");
@@ -10,16 +12,6 @@ var StringStream = require("./StringStream"),
     assertions = require("./assertions");
 
 var DebuggerVariableParser = require("../src/DebuggerVariableParser");
-
-// jshint freeze:false
-Object.prototype.isEmpty = function() {
-  return Object.keys(this).length === 0;
-};
-
-Array.prototype.isEmpty = function() {
-  return this.length === 0;
-};
-// jshint freeze:true
 
 describe("DebuggerVariablesParser Tests", function() {
   var parser;
