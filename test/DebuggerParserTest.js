@@ -89,6 +89,14 @@ describe("DebuggerParser Tests", function() {
     StringStream.createStream("Line " + line + " of 'test.pl' not breakable.\n").pipe(parser);
   });
 
+  should("reset variables parser when setting mode to parse variables", function(done) {
+    parser._variableParser.reset = function() {
+      done();
+    };
+
+    parser.setMode(DebuggerParser.VARIABLE_PARSE_MODE);
+  });
+
   should("pass event from variables parser through to listeners", function(done) {
     var variables = {
       name: "variables",
@@ -102,5 +110,58 @@ describe("DebuggerParser Tests", function() {
     }));
 
     parser._variableParser.push(variables);
+  });
+
+  should("reset parser to scan mode when variables parser emits result", function(done) {
+    parser.setMode(DebuggerParser.VARIABLE_PARSE_MODE);
+
+    parser.once("readable", eventReader(function() {
+      expect(parser.getMode()).to.equal(DebuggerParser.SCAN_MODE);
+
+      done();
+    }));
+
+    parser._variableParser.push({
+      name: "variables",
+      args: []
+    });
+  });
+
+  should("reset stacktrace parser when setting mode to parse stacktrace", function(done) {
+    parser._stackTraceParser.reset = function() {
+      done();
+    };
+
+    parser.setMode(DebuggerParser.STACK_TRACE_PARSE_MODE);
+  });
+
+  should("pass event from stacktrace parser through to listeners", function(done) {
+    var stacktrace = {
+      name: "stacktrace",
+      args: []
+    };
+
+    parser.once("readable", eventReader(function(event) {
+      expect(event).to.equal(stacktrace);
+
+      done();
+    }));
+
+    parser._stackTraceParser.push(stacktrace);
+  });
+
+  should("reset parser to scan mode when stacktrace parser emits result", function(done) {
+    parser.setMode(DebuggerParser.STACK_TRACE_PARSE_MODE);
+
+    parser.once("readable", eventReader(function() {
+      expect(parser.getMode()).to.equal(DebuggerParser.SCAN_MODE);
+
+      done();
+    }));
+
+    parser._variableParser.push({
+      name: "stacktrace",
+      args: []
+    });
   });
 });

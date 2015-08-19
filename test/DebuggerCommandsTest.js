@@ -9,7 +9,8 @@ var chai = require("chai"),
 
 var StringBuffer = require("./StringBuffer");
 
-var DebuggerCommands = require("../src/DebuggerCommands");
+var DebuggerCommands = require("../src/DebuggerCommands"),
+    DebuggerParser = require("../src/DebuggerParser");
 
 describe("DebuggerCommands Tests", function() {
   var client,
@@ -74,6 +75,18 @@ describe("DebuggerCommands Tests", function() {
 
     emit({ name: "break", args: [ "foo.pl", 123 ] });
     process.nextTick(emitPrompt);
+  });
+
+  should("issue variables command", function(done) {
+    commands.variables();
+
+    checkBuffer("y\n", done);
+  });
+
+  should("set debugger parser into variables mode when issuing variables command", function() {
+    commands.variables();
+
+    expect(commands._parser.getMode()).to.equal(DebuggerParser.VARIABLE_PARSE_MODE);
   });
 
   should("return no variables when parser issues prompt event", function(done) {

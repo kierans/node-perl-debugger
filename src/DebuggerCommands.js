@@ -90,6 +90,9 @@ DebuggerCommands.prototype.variables = function() {
   this._emitter.once("variables", deferred.resolve);
   this._emitter.once("parsingerror", deferred.reject);
 
+  // tell the parser it will expecting variable data
+  this._parser.setMode(DebuggerParser.VARIABLE_PARSE_MODE);
+
   //noinspection JSValidateTypes
   return deferred.promise;
 };
@@ -204,7 +207,7 @@ DebuggerCommands.prototype._onNextTick = function(func) {
 
 DebuggerCommands.prototype._onEvent = function() {
   var event;
-  
+
   do {
     event = this._parser.read();
 

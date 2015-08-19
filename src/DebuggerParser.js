@@ -4,6 +4,7 @@ var TransformStream = require("stream").Transform,
     util = require("util");
 
 var DebuggerVariableParser = require("./DebuggerVariableParser"),
+    DebuggerStackTraceParser = require("./DebuggerStackTraceParser"),
     Logger = require("./logger"),
     StreamEmitter = require("./StreamEmitter");
 
@@ -13,7 +14,8 @@ StreamEmitter.mixin(DebuggerParser);
 module.exports = DebuggerParser;
 
 DebuggerParser.SCAN_MODE = "scan";
-DebuggerParser.PARSE_MODE = "parse";
+DebuggerParser.VARIABLE_PARSE_MODE = "variable-parse";
+DebuggerParser.STACK_TRACE_PARSE_MODE = "stacktrace-parse";
 
 /**
  * Parses text from the Perl debugger into events.
@@ -26,37 +28,56 @@ function DebuggerParser(config) {
   TransformStream.call(this, { objectMode: true });
 
   this._mode = DebuggerParser.SCAN_MODE;
+  this._logger = Logger.initLogger(config);
+
   /** @type {DebuggerVariableParser} */
   this._variableParser = new DebuggerVariableParser(config);
   this._variableParser.on("readable", this._eventProxy(this._variableParser));
 
-  this._logger = Logger.initLogger(config);
+  /** @type {DebuggerStackTraceParser} */
+  this._stackTraceParser = new DebuggerStackTraceParser(config);
+  this._stackTraceParser.on("readable", this._eventProxy(this._stackTraceParser));
 }
+
+DebuggerParser.prototype.getMode = function() {
+  return this._mode;
+};
+
+DebuggerParser.prototype.setMode = function(mode) {
+  this._mode = mode;
+
+  if (this._mode === DebuggerParser.VARIABLE_PARSE_MODE) {
+    this._logger("Beginning variable parse");
+    this._variableParser.reset();
+  }
+
+  if (this._mode === DebuggerParser.STACK_TRACE_PARSE_MODE) {
+    this._logger("Beginning stacktrace parse");
+    this._stackTraceParser.reset();
+  }
+};
 
 //noinspection JSUnusedGlobalSymbols
 DebuggerParser.prototype._transform = function(chunk, encoding, done) {
-  if (/^[$@%]/.test(chunk) || this._mode === DebuggerParser.PARSE_MODE) {
-    // we're parsing variables
-    if (this._mode !== DebuggerParser.PARSE_MODE) {
-      this._logger("Beginning parse");
-      this._variableParser.reset();
-    }
+  switch (this._mode) {
+    case DebuggerParser.VARIABLE_PARSE_MODE:
+      this._variableParser.write(chunk, encoding);
+        break;
 
-    this._mode = DebuggerParser.PARSE_MODE;
-    this._variableParser.write(chunk, encoding);
+    case DebuggerParser.STACK_TRACE_PARSE_MODE:
+      this._stackTraceParser.write(chunk, encoding);
+      break;
 
-    done();
-
-    return;
+    default:
+      chunk.split("\n").forEach(this._scan.bind(this));
   }
 
-  chunk.split("\n").forEach(this._scan.bind(this));
   done();
 };
 
 //noinspection JSUnusedGlobalSymbols
 DebuggerParser.prototype._flush = function(done) {
-  if (this._mode === DebuggerParser.PARSE_MODE) {
+  if (this._mode === DebuggerParser.VARIABLE_PARSE_MODE) {
     this._variableParser.end();
   }
 
@@ -93,6 +114,7 @@ DebuggerParser.prototype._scan = function(line) {
 
 DebuggerParser.prototype._eventProxy = function(readable) {
   return function() {
+    this._mode = DebuggerParser.SCAN_MODE;
     this.push(readable.read());
   }.bind(this);
 };
