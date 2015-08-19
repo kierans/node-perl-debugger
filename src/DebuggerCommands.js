@@ -33,6 +33,7 @@ function DebuggerCommands(stream, config) {
   this._parser = new DebuggerParser(config);
   this._emitter = new events.EventEmitter();
   this._ready = false;
+  this._currentLocation = null;
 
   if (stream) {
     this.connect(stream);
@@ -92,6 +93,36 @@ DebuggerCommands.prototype.variables = function() {
 
   // tell the parser it will expecting variable data
   this._parser.setMode(DebuggerParser.VARIABLE_PARSE_MODE);
+
+  //noinspection JSValidateTypes
+  return deferred.promise;
+};
+
+/**
+ * @return {Promise} Get the stacktrace.
+ */
+DebuggerCommands.prototype.stacktrace = function() {
+  var self = this,
+      deferred = Q.defer(),
+      message = this._send("T");
+
+  message.then(function() {
+    var trace = [];
+    self._addCurrentLocationToStackTrace(trace);
+
+    deferred.resolve(trace);
+  });
+
+  this._emitter.once("stacktrace", function(trace) {
+    self._addCurrentLocationToStackTrace(trace);
+
+    deferred.resolve(trace);
+  });
+
+  this._emitter.once("parsingerror", deferred.reject);
+
+  // tell the parser it will expecting stacktrace data
+  this._parser.setMode(DebuggerParser.STACK_TRACE_PARSE_MODE);
 
   //noinspection JSValidateTypes
   return deferred.promise;
@@ -276,15 +307,34 @@ DebuggerCommands.prototype._breakpoint = function(filename, line, flag) {
 };
 
 DebuggerCommands.prototype._listenForBreak = function() {
-  var deferred = Q.defer();
+  var deferred = Q.defer(),
+      self = this;
 
   this._emitter.once("break", function(file, line) {
     // resolve can only take a single value.
-    deferred.resolve({
+    self._currentLocation = {
       file: file,
       line: line
-    });
+    };
+
+    deferred.resolve(self._currentLocation);
   });
 
   return deferred.promise;
+};
+
+DebuggerCommands.prototype._addCurrentLocationToStackTrace = function(trace) {
+  if (trace.isEmpty()) {
+    // we're in the "main" script
+    trace.push({
+      sub: null,
+      location: this._currentLocation
+    });
+
+    return;
+  }
+
+  // update the first element with location information
+  var element = trace[0];
+  element.location = element.location || this._currentLocation;
 };

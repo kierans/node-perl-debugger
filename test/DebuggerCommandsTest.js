@@ -7,6 +7,8 @@ var chai = require("chai"),
     expect = chai.expect,
     should = require("mocha-should");
 
+var clone = require("clone");
+
 var StringBuffer = require("./StringBuffer");
 
 var DebuggerCommands = require("../src/DebuggerCommands"),
@@ -18,6 +20,13 @@ describe("DebuggerCommands Tests", function() {
 
   function emit(event) {
     commands._parser.push(event);
+  }
+
+  function emitBreak(file, line) {
+    file = file || "foo.txt";
+    line = line || "231";
+
+    emit({ name: "break", args: [ file, line ] });
   }
 
   // fakes a prompt from the perl debugger.
@@ -61,7 +70,7 @@ describe("DebuggerCommands Tests", function() {
       done();
     });
 
-    emit({ name: "break", args: [ filename, line ] });
+    emitBreak(filename, line);
   });
 
   should("swallow break when debugger loaded for first time", function(done) {
@@ -73,7 +82,7 @@ describe("DebuggerCommands Tests", function() {
 
     commands.on("prompt", done);
 
-    emit({ name: "break", args: [ "foo.pl", 123 ] });
+    emitBreak();
     process.nextTick(emitPrompt);
   });
 
@@ -140,6 +149,103 @@ describe("DebuggerCommands Tests", function() {
     emitPrompt();
   });
 
+  should("issue stack trace command", function(done) {
+    commands.stacktrace();
+
+    checkBuffer("T\n", done);
+  });
+
+  should("set debugger parser into stacktrace mode when issuing stacktrace command", function() {
+    commands.stacktrace();
+
+    expect(commands._parser.getMode()).to.equal(DebuggerParser.STACK_TRACE_PARSE_MODE);
+  });
+
+  should("return trace when parser issues stacktrace event", function(done) {
+    var stacktrace = commands.stacktrace(),
+        file = "Bar.pm",
+        line = "12",
+        expected = [
+          {
+            sub: "Baz::baz()",
+            location: {
+              file: file,
+              line: line
+            }
+          },
+          {
+            sub: "Bar::bar()",
+            location: {
+              file: "Bar.pm",
+              line: "12"
+            }
+          }
+        ];
+
+    stacktrace
+        .then(function(trace) {
+          assertTraceCorrect(expected, trace);
+        })
+        .then(done)
+        .catch(done);
+
+    /*
+     * The actual event emitted from the parser doesn't have the current location that the program
+     * has paused at (ie: a breakpoint).  This is due to how the debugger outputs it's stack trace.
+     * Consequently the commands will have to augment the result from the parser, and we should test
+     * for that.
+     */
+    var event = clone(expected);
+    event[0].location = null;
+
+    commands._listenForBreak();
+    emitBreak(file, line);
+    emit({ name: "stacktrace", args: [ event ] });
+    emitPrompt();
+  });
+
+  should("return current location when no trace available from parser", function(done) {
+    var stacktrace = commands.stacktrace(),
+        file = "main.pl",
+        line = "3",
+        expected = [
+          {
+            sub: null,
+            location: {
+              file: file,
+              line: line
+            }
+          }
+        ];
+
+    stacktrace
+        .then(function(trace) {
+          assertTraceCorrect(expected, trace);
+        })
+        .then(done)
+        .catch(done);
+
+    commands._listenForBreak();
+    emitBreak(file, line);
+    emitPrompt();
+  });
+
+  should("return no stacktrace when parser issues parsing error", function(done) {
+    var variables = commands.variables();
+
+    variables
+        .then(function() {
+          done(new Error("Promise resolved"));
+        })
+        .catch(function(err) {
+          expect(err).to.not.be.undefined;
+          done();
+        });
+
+    emit({ name: "parsingerror", args: [ new Error() ]});
+    emitPrompt();
+  });
+
   should("issue step into command", function(done) {
     commands.stepInto();
 
@@ -169,7 +275,7 @@ describe("DebuggerCommands Tests", function() {
         line = 231;
 
     client.on("write", function() {
-      emit({ name: "break", args: [ "foo.txt", "231" ]});
+      emitBreak();
       emitPrompt();
     });
 
@@ -258,4 +364,25 @@ describe("DebuggerCommands Tests", function() {
 
     emit({ name: "terminated" });
   });
+
+  function assertTraceCorrect(expected, actual) {
+    expect(actual.length).to.equal(expected.length);
+
+    for(var i = 0; i < expected.length; i++) {
+      var e = expected[i],
+          a = actual[i];
+
+      expect(a.sub).to.equal(e.sub);
+
+      expect(a.location).to.not.be.undefined;
+
+      if (e.location === null) {
+        expect(a.location).to.be.null;
+      }
+      else {
+        expect(a.location.file).to.equal(e.location.file);
+        expect(a.location.line).to.equal(e.location.line);
+      }
+    }
+  }
 });

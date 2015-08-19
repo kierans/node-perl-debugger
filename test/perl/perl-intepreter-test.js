@@ -3,7 +3,6 @@
 var DebuggerHost = require("../../src/DebuggerHost");
 
 var debug = new DebuggerHost({
-  log: process.stdout,
   port: 12345
 });
 
@@ -20,18 +19,30 @@ debug.listen();
 var commands = debug.commands();
 
 commands.on("ready", function() {
-  commands.break("test.pl", 45)
+  commands.break("Calculator.pm", 10)
+      .then(function() {
+        return commands.break("test.pl", 45);
+      })
+      .then(function() {
+        return commands.continue();
+      })
+      .then(function() {
+        return commands.stacktrace();
+      })
+      .then(log)
       .then(function() {
         return commands.continue();
       })
       .then(function() {
         return commands.variables();
       })
-      .then(function(vars) {
-        console.log(JSON.stringify(vars, null ,2));
-      })
+      .then(log)
       .then(function() {
         return commands.quit();
       })
       .catch(console.error);
 });
+
+function log(json) {
+  console.log(JSON.stringify(json, null, 2));
+}
